@@ -35,11 +35,11 @@ This is intended to be simple example for speech to text, running locally on mac
 ## Sample performance test results
 Example of transcription performance using a few public domain videos as input
 
-| Sample | Sample Duration | Transcription Time (M3, 16GB) | Comment|
-| --------------- | --------------- | --------------- | --------------- |
-| [sounds-of-mars-one-small-step-earth](https://science.nasa.gov/resource/sounds-of-mars-one-small-step/) | 0:10 | 0:02 | 
-| [2024s-victor-riparbelli](https://www.ted.com/talks/quick-list) | 16:24 | 04:37 | First sentence, near loud Ted intro music, missing
-[2025s-chris-anderson](https://www.ted.com/talks/quick-list) |57:09 | N.A. | OOM Kill @ 0:06:22
+| Sample | Sample Duration | Transcription Time (M3, 16 GB) | Transcription Time (M1, 64 GB) | Comment|
+| --------------- | --------------- | --------------- | --------------- | --------------- |
+| [sounds-of-mars-one-small-step-earth](https://science.nasa.gov/resource/sounds-of-mars-one-small-step/) | 0:10 | 0:02 | ~0
+| [2024s-victor-riparbelli](https://www.ted.com/talks/quick-list) | 16:24 | 04:37 | 01:55 | First sentence, near loud Ted intro music, missing
+[2025s-chris-anderson](https://www.ted.com/talks/quick-list) |57:09 | OOM Kill | 05:04 | 16 GB not enough
 
 ## Future work
 Learn how to
