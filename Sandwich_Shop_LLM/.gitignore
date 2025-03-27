@@ -1,0 +1,5 @@
+*.log
+*.tmp
+certs/*.key
+.htpasswd
+automated_performance_testing/logs/

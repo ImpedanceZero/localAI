@@ -1,0 +1,97 @@
+# Docker-compose.yml for AnythingLLM with Codestral and Mistral-Nemo inference services
+
+services:
+  # Backend / Inference Services - containerized llama-server
+    # --n-gpu-layers 999 : 100% offload to GPU
+    # --ctx-size 4096: tradeoff between capability and memory capacity, ensure anything LLM's LLM provider configuration matches this context window
+    # --flash-attn: enable Flash Attention for speed and GPU memory efficiency
+    # --verbose: to capture additional telemetry for testing and analysis, disable this before putting in production
+
+  # Code assistant inference service (Codestral)
+  llama-cpp-codestral:
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda
+    ports:
+      - "8002:8000"  # Codestral on port 8002 (external) mapping to 8000 (internal)
+    volumes:
+      - /usr/share/models:/models
+    command: >
+      --server -m /models/Codestral-22B-v0.1-Q3_K_M.gguf 
+      --host 0.0.0.0 --port 8000 
+      --n-gpu-layers 999
+      --ctx-size 4096
+      --flash-attn
+      --verbose 
+    deploy:
+      resources:
+        reservations:
+          cpus: "2"  # Reserve 2 CPU cores
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8000/v1/models || exit 1"]
+      interval: 10s  # Reduced interval for faster checks
+      timeout: 10s   # Sufficient for a few-second startup
+      retries: 5     # Adequate retries for quick loading
+      start_period: 30s  # Reduced to match fast model loading
+
+  # Marketing and RAG assistant inference service (Mistral-Nemo)
+  llama-cpp-mistral:
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda
+    ports:
+      - "8001:8000"
+    volumes:
+      - /usr/share/models:/models
+    command: >
+      --server -m /models/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf 
+      --host 0.0.0.0 --port 8000 
+      --n-gpu-layers 999 
+      --ctx-size 4096 
+      --flash-attn
+      --verbose
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8000/v1/models || exit 1"]
+      interval: 10s  # Reduced interval
+      timeout: 10s   # Sufficient timeout
+      retries: 5     # Adequate retries
+      start_period: 30s  # Reduced start period
+
+  # Front End Service (AnythingLLM)
+  anythingllm:
+      image: mintplexlabs/anythingllm:latest # Specific version to avoid regressions
+      ports:
+        - "0.0.0.0:80:3001"  # AnythingLLM UI, bound to port 80 on all interfaces for LAN access
+      deploy:
+        resources:
+          reservations:
+            cpus: "2"  # Reserve 2 CPU cores
+      volumes:
+        - /usr/share/models:/app/server/storage/models
+        - anythingllm-storage:/app/server/storage
+      depends_on:
+        llama-cpp-codestral:
+          condition: service_healthy
+        llama-cpp-mistral:
+          condition: service_healthy
+      environment:
+      # We found it was necessary to pass JWT_SECRET in order to authenticate, after initial configuration and subsequent reset of anythingllm container
+      - JWT_SECRET=${JWT_SECRET}  # Retrieve JWT_SECRET from shell environment, e.g. running 'export JWT_SECRET=$(openssl rand -base64 32)' first
+      - VECTOR_DB=lancedb  # While this should be the default, we found it was necessary to specify as a workaround to avoid an error
+      healthcheck:
+        test: ["CMD", "curl", "--fail", "http://localhost:3001/api/system/health"]
+        interval: 30s
+        timeout: 5s
+        retries: 3
+        start_period: 30s
+
+volumes:
+  anythingllm-storage:  # Persistent volume for AnythingLLM
+
